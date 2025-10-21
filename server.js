@@ -1,45 +1,75 @@
 const express = require('express');
 const axios = require('axios');
 const path = require('path');
+const { validateNewsRequest } = require('./middleware/validation');
 
 const app = express();
-const port = 3000;
+const PORT = 3000;
 
-// Настройка ejs
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
-// Маршрут вида /10/news/for/business
-app.get('/:count/news/for/:category', async (req, res) => {
-  const { count, category } = req.params;
+// Применяем middleware валидации
+app.get('/:count/news/for/:category', validateNewsRequest, async (req, res) => {
+    try {
+        const { count, category } = req.params;
+        const newsCount = parseInt(count);
 
-  const validCategories = ['business', 'economic', 'finances', 'politics', 'auto'];
-  if (!validCategories.includes(category)) {
-    return res.status(400).send('Некорректная категория.');
-  }
+        const rssUrl = `https://www.vedomosti.ru/rss/rubric/${category}`;
+        const apiUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(rssUrl)}`;
 
-  const n = parseInt(count, 10);
-  if (isNaN(n) || n <= 0) {
-    return res.status(400).send('Количество новостей должно быть положительным числом.');
-  }
+        console.log(`Запрос новостей: ${newsCount} из категории ${category}`);
 
-  try {
-    const rssUrl = `https://www.vedomosti.ru/rss/rubric/${category}`;
-    const apiUrl = `https://api.rss2json.com/v1/api.json?rss_url=${rssUrl}`;
-    const { data } = await axios.get(apiUrl);
+        const response = await axios.get(apiUrl, {
+            timeout: 10000 // 10 секунд таймаут
+        });
+        
+        if (response.data.status !== 'ok') {
+            throw new Error('Ошибка RSS2JSON: ' + (response.data.message || 'Неизвестная ошибка'));
+        }
 
-    const news = data.items.slice(0, n);
-    res.render('news', {
-      category,
-      count: n,
-      news
-    });
-  } catch (error) {
-    console.error(error.message);
-    res.status(500).send('Ошибка при получении данных.');
-  }
+        const limitedNews = response.data.items.slice(0, newsCount);
+
+        const categoryNames = {
+            business: 'Бизнес',
+            economic: 'Экономика', 
+            finances: 'Финансы',
+            politics: 'Политика',
+            auto: 'Автомобили'
+        };
+
+        res.render('news', {
+            newsCount: newsCount,
+            category: categoryNames[category],
+            news: limitedNews
+        });
+
+    } catch (error) {
+        console.error('Ошибка:', error.message);
+        
+        if (error.code === 'ECONNABORTED') {
+            res.status(504).send('Таймаут при запросе к сервису новостей');
+        } else if (error.response) {
+            res.status(502).send('Ошибка внешнего сервиса');
+        } else {
+            res.status(500).send('Внутренняя ошибка сервера');
+        }
+    }
 });
 
-app.listen(port, () => {
-  console.log(`Server running at http://localhost:${port}`);
+app.get('/', (req, res) => {
+    res.send(`
+        <h1>Сервис новостей Ведомостей</h1>
+        <p>Использование: http://localhost:3000/ЧИСЛО/news/for/КАТЕГОРИЯ</p>
+        <p>Примеры:</p>
+        <ul>
+            <li><a href="/3/news/for/business">3 новости о бизнесе</a></li>
+            <li><a href="/5/news/for/politics">5 новостей о политике</a></li>
+            <li><a href="/7/news/for/auto">7 новостей об автомобилях</a></li>
+        </ul>
+    `);
+});
+
+app.listen(PORT, () => {
+    console.log(`🚀 Сервер запущен на http://localhost:${PORT}`);
 });
