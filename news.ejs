@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Новости Ведомостей</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h3 {
+            color: #333;
+            border-bottom: 2px solid #007cba;
+            padding-bottom: 10px;
+        }
+        dl {
+            margin: 20px 0;
+        }
+        dt {
+            font-weight: bold;
+            margin-top: 15px;
+            color: #007cba;
+            cursor: pointer;
+        }
+        dt:hover {
+            color: #005a87;
+        }
+        dd {
+            margin: 5px 0 15px 20px;
+            color: #666;
+            line-height: 1.5;
+        }
+        .news-item {
+            border-left: 3px solid #007cba;
+            padding-left: 15px;
+            margin-bottom: 20px;
+        }
+        .news-date {
+            font-size: 0.9em;
+            color: #888;
+            margin-top: 5px;
+        }
+        .back-link {
+            display: inline-block;
+            margin-top: 20px;
+            color: #007cba;
+            text-decoration: none;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h3><%= newsCount %> последних новостей в категории <%= category %></h3>
+        
+        <% if (news.length === 0) { %>
+            <p>Новости не найдены</p>
+        <% } else { %>
+            <div class="news-list">
+                <% news.forEach((item, index) => { %>
+                    <div class="news-item">
+                        <dt><%= index + 1 %>. <%= item.title %></dt>
+                        <dd>
+                            <%= item.description || 'Описание отсутствует' %>
+                            <div class="news-date">
+                                Опубликовано: <%= new Date(item.pubDate).toLocaleDateString('ru-RU') %>
+                            </div>
+                            <% if (item.link) { %>
+                                <a href="<%= item.link %>" target="_blank" style="color: #007cba;">Читать полностью</a>
+                            <% } %>
+                        </dd>
+                    </div>
+                <% }); %>
+            </div>
+        <% } %>
+        
+        <a href="/" class="back-link">← Назад к выбору категорий</a>
+    </div>
+
+    <script>
+        // Добавляем функциональность сворачивания/разворачивания новостей
+        document.addEventListener('DOMContentLoaded', function() {
+            const newsTitles = document.querySelectorAll('dt');
+            newsTitles.forEach(title => {
+                title.addEventListener('click', function() {
+                    const description = this.nextElementSibling;
+                    description.style.display = description.style.display === 'none' ? 'block' : 'none';
+                });
+            });
+        });
+    </script>
+</body>
+</html>
